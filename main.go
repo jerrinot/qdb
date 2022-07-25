@@ -15,10 +15,14 @@ import (
 	"time"
 )
 
+type ErrorResponse struct {
+	Query string `json:"query"`
+	Error string `json:"error"`
+}
+
 type ResultSet struct {
 	Query   string   `json:"query"`
 	Column  []Column `json:"columns"`
-	Error   string   `json:"error"`
 	Dataset [][]any  `json:"dataset"`
 }
 
@@ -102,7 +106,6 @@ func main() {
 			if getErr != nil {
 				log.Fatal(getErr)
 			}
-
 			if res.Body != nil {
 				defer res.Body.Close()
 			}
@@ -110,29 +113,37 @@ func main() {
 			if err != nil {
 				log.Fatal(err)
 			}
-			//respString := string(body)
-			//fmt.Println(respString)
-			var rs ResultSet
-			if err := json.Unmarshal(body, &rs); err != nil {
-				log.Fatal(err)
+			if res.StatusCode == http.StatusOK {
+				//respString := string(body)
+				//fmt.Println(respString)
+				var rs ResultSet
+				if err := json.Unmarshal(body, &rs); err != nil {
+					log.Fatal(err)
+				}
+				t := table.NewWriter()
+				t.SetOutputMirror(os.Stdout)
+				header := table.Row{}
+				for _, arrColumn := range rs.Column {
+					header = append(header, arrColumn.Name)
+				}
+				rows := make([]table.Row, 0)
+				for _, arrRow := range rs.Dataset {
+					rows = append(rows, arrRow)
+				}
+				t.AppendHeader(header)
+				t.AppendRows(rows)
+
+				t.AppendSeparator()
+				t.Render()
+			} else {
+				var errResponse ErrorResponse
+				if err := json.Unmarshal(body, &errResponse); err != nil {
+					log.Fatal(err)
+				}
+				fmt.Println(errResponse.Error)
 			}
 			el.SetLeftPrompt("qdb> ")
 			buff = ""
-			t := table.NewWriter()
-			t.SetOutputMirror(os.Stdout)
-			header := table.Row{}
-			for _, arrColumn := range rs.Column {
-				header = append(header, arrColumn.Name)
-			}
-			rows := make([]table.Row, 0)
-			for _, arrRow := range rs.Dataset {
-				rows = append(rows, arrRow)
-			}
-			t.AppendHeader(header)
-			t.AppendRows(rows)
-
-			t.AppendSeparator()
-			t.Render()
 		} else {
 			el.SetLeftPrompt(" > ")
 		}
