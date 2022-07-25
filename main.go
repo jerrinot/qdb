@@ -15,9 +15,14 @@ import (
 	"time"
 )
 
+const localhostPrefix = "http://localhost:9000/exec?count=true&query="
+const demoPrefix = "https://demo.questdb.io/exec?count=true&query="
+const QdbServerPrefix = demoPrefix
+
 type ErrorResponse struct {
-	Query string `json:"query"`
-	Error string `json:"error"`
+	Query   string `json:"query"`
+	Error   string `json:"error"`
+	Message string `json:"message"`
 }
 
 type ResultSet struct {
@@ -81,6 +86,7 @@ func main() {
 		s, err := el.GetLine()
 		buff += s
 		if err != nil {
+
 			if err == io.EOF {
 				break
 			}
@@ -97,7 +103,7 @@ func main() {
 				log.Fatal(err)
 			}
 			//fmt.Println(buff)
-			qurl := "http://localhost:9000/exec?count=true&query=" + url.QueryEscape(buff)
+			qurl := QdbServerPrefix + url.QueryEscape(buff)
 			req, err := http.NewRequest(http.MethodGet, qurl, nil)
 			if err != nil {
 				log.Fatal(err)
@@ -113,9 +119,9 @@ func main() {
 			if err != nil {
 				log.Fatal(err)
 			}
+			respString := string(body)
+			//fmt.Println(respString)
 			if res.StatusCode == http.StatusOK {
-				//respString := string(body)
-				//fmt.Println(respString)
 				var rs ResultSet
 				if err := json.Unmarshal(body, &rs); err != nil {
 					log.Fatal(err)
@@ -140,7 +146,13 @@ func main() {
 				if err := json.Unmarshal(body, &errResponse); err != nil {
 					log.Fatal(err)
 				}
-				fmt.Println(errResponse.Error)
+				if errResponse.Error != "" {
+					fmt.Println(errResponse.Error)
+				} else if errResponse.Message != "" {
+					fmt.Println(errResponse.Message)
+				} else {
+					fmt.Println(respString)
+				}
 			}
 			el.SetLeftPrompt("qdb> ")
 			buff = ""
