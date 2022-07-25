@@ -17,7 +17,7 @@ import (
 
 const localhostPrefix = "http://localhost:9000/exec?count=true&query="
 const demoPrefix = "https://demo.questdb.io/exec?count=true&query="
-const QdbServerPrefix = demoPrefix
+const QdbServerPrefix = localhostPrefix
 
 type ErrorResponse struct {
 	Query   string `json:"query"`
@@ -52,9 +52,13 @@ func (_ example) GetCompletions(word string) []string {
 }
 
 func main() {
+	runSqlShell()
+	fmt.Println("goodbye!")
+}
 
+func runSqlShell() {
 	httpClient := http.Client{
-		Timeout: time.Second * 10,
+		Timeout: time.Second * 1000,
 	}
 	// Open and immediately close a libedit instance to test that nonzero editor
 	// IDs are tracked correctly.
@@ -160,5 +164,4 @@ func main() {
 			el.SetLeftPrompt(" > ")
 		}
 	}
-	fmt.Println("goodbye!")
 }
