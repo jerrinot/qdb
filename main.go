@@ -71,7 +71,7 @@ func main() {
 	el.SetAutoSaveHistory("hist", true)
 	el.SetCompleter(example{})
 	el.SetLeftPrompt("qdb> ")
-	el.SetRightPrompt("(-:")
+	//el.SetRightPrompt("(-:")
 	buff := ""
 	for {
 		s, err := el.GetLine()
