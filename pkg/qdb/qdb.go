@@ -2,9 +2,11 @@ package qdb
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"github.com/jedib0t/go-pretty/v6/table"
 	"github.com/knz/go-libedit"
+	"github.com/manifoldco/promptui"
 	"io"
 	"io/ioutil"
 	"log"
@@ -17,7 +19,8 @@ import (
 
 const localhostPrefix = "http://localhost:9000/exec?count=true&query="
 const demoPrefix = "https://demo.questdb.io/exec?count=true&query="
-const QdbServerPrefix = localhostPrefix
+
+//const QdbServerPrefix = localhostPrefix
 
 type ErrorResponse struct {
 	Query   string `json:"query"`
@@ -36,6 +39,10 @@ type Column struct {
 	ColumnType string `json:"type"`
 }
 
+var httpClient = http.Client{
+	Timeout: time.Second * 1000,
+}
+
 type example struct{}
 
 func (_ example) GetCompletions(word string) []string {
@@ -51,9 +58,78 @@ func (_ example) GetCompletions(word string) []string {
 	return nil
 }
 
+func amendUrl(input string) string {
+	if !strings.HasPrefix(input, "http://") && !strings.HasPrefix(input, "https://") {
+		input = "http://" + input
+	}
+	return input + "/exec?count=true&query="
+}
+
+func selectBaseUrl() (string, error) {
+	selectPrompt := promptui.Select{
+		Label: "Select QuestDB connection type",
+		Items: []string{"Localhost", "QuestDB Cloud", "Custom"},
+	}
+
+	_, result, err := selectPrompt.Run()
+
+	if err != nil {
+		fmt.Printf("Cannot select QuestDB connection type %v\n", err)
+		return "", err
+	}
+
+	fmt.Printf("You choose %q\n", result)
+	if result == "Localhost" {
+		return localhostPrefix, nil
+	} else if result == "QuestDB Cloud" {
+		return "", fmt.Errorf("QuestDB Cloud is not support yet")
+	} else if result == "Custom" {
+		validate := func(input string) error {
+			input = amendUrl(input)
+			url := input + url.QueryEscape("select now();")
+			resp, err := callGet(url)
+			if err != nil {
+				return errors.New("error while calling GET")
+			}
+			if resp.Body != nil {
+				defer resp.Body.Close()
+			}
+			if resp.StatusCode != 200 {
+				return fmt.Errorf(url + "Returned unexpected return code")
+			}
+			return nil
+		}
+
+		prompt := promptui.Prompt{
+			Label:    "QuestDB HTTP Endpoint",
+			Validate: validate,
+		}
+		serverPrefix, err := prompt.Run()
+
+		if err != nil {
+			fmt.Printf("Prompt failed %v\n", err)
+			return "", err
+		}
+		serverPrefix = amendUrl(serverPrefix)
+		fmt.Printf("You choose %q\n", serverPrefix)
+		return serverPrefix, nil
+	} else {
+		return "", fmt.Errorf("unexpected QuestDB connection type %s", result)
+	}
+}
+
 func RunSqlShell(query string) {
+	serverPrefix, err := selectBaseUrl()
+	if err != nil {
+		panic(err)
+		return
+	}
+
 	if query != "" {
-		runAndPrintQuery(query)
+		err := runAndPrintQuery(serverPrefix, query)
+		if err != nil {
+			fmt.Println(err)
+		}
 		return
 	}
 
@@ -100,7 +176,10 @@ func RunSqlShell(query string) {
 			if err := el.AddHistory(buff); err != nil {
 				log.Fatal(err)
 			}
-			runAndPrintQuery(buff)
+			err := runAndPrintQuery(serverPrefix, buff)
+			if err != nil {
+				fmt.Println(err)
+			}
 			//fmt.Println(buff)
 
 			el.SetLeftPrompt("qdb> ")
@@ -111,18 +190,19 @@ func RunSqlShell(query string) {
 	}
 }
 
-func runAndPrintQuery(query string) {
-	httpClient := http.Client{
-		Timeout: time.Second * 1000,
-	}
-	qurl := QdbServerPrefix + url.QueryEscape(query)
-	req, err := http.NewRequest(http.MethodGet, qurl, nil)
+func callGet(url string) (*http.Response, error) {
+	req, err := http.NewRequest(http.MethodGet, url, nil)
 	if err != nil {
-		log.Fatal(err)
+		return nil, err
 	}
-	res, getErr := httpClient.Do(req)
-	if getErr != nil {
-		log.Fatal(getErr)
+	return httpClient.Do(req)
+}
+
+func runAndPrintQuery(prefix string, query string) error {
+	qurl := prefix + url.QueryEscape(query)
+	res, err := callGet(qurl)
+	if err != nil {
+		return err
 	}
 	if res.Body != nil {
 		defer res.Body.Close()
@@ -136,7 +216,7 @@ func runAndPrintQuery(query string) {
 	if res.StatusCode == http.StatusOK {
 		var rs ResultSet
 		if err := json.Unmarshal(body, &rs); err != nil {
-			log.Fatal(err)
+			fmt.Println(respString)
 		}
 		t := table.NewWriter()
 		t.SetOutputMirror(os.Stdout)
@@ -166,4 +246,5 @@ func runAndPrintQuery(query string) {
 			fmt.Println(respString)
 		}
 	}
+	return nil
 }
