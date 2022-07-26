@@ -11,7 +11,6 @@ import (
 	"net/http"
 	"net/url"
 	"os"
-	"strconv"
 	"strings"
 	"time"
 )
@@ -52,10 +51,12 @@ func (_ example) GetCompletions(word string) []string {
 	return nil
 }
 
-func RunSqlShell() {
-	httpClient := http.Client{
-		Timeout: time.Second * 1000,
+func RunSqlShell(query string) {
+	if query != "" {
+		runAndPrintQuery(query)
+		return
 	}
+
 	// Open and immediately close a libedit instance to test that nonzero editor
 	// IDs are tracked correctly.
 	el, err := libedit.Init("example", true)
@@ -103,57 +104,7 @@ func RunSqlShell() {
 				log.Fatal(err)
 			}
 			//fmt.Println(buff)
-			qurl := QdbServerPrefix + url.QueryEscape(buff)
-			req, err := http.NewRequest(http.MethodGet, qurl, nil)
-			if err != nil {
-				log.Fatal(err)
-			}
-			res, getErr := httpClient.Do(req)
-			if getErr != nil {
-				log.Fatal(getErr)
-			}
-			if res.Body != nil {
-				defer res.Body.Close()
-			}
-			body, err := ioutil.ReadAll(res.Body)
-			if err != nil {
-				log.Fatal(err)
-			}
-			respString := string(body)
-			//fmt.Println(respString)
-			if res.StatusCode == http.StatusOK {
-				var rs ResultSet
-				if err := json.Unmarshal(body, &rs); err != nil {
-					log.Fatal(err)
-				}
-				t := table.NewWriter()
-				t.SetOutputMirror(os.Stdout)
-				header := table.Row{}
-				for _, arrColumn := range rs.Column {
-					header = append(header, arrColumn.Name)
-				}
-				rows := make([]table.Row, 0)
-				for _, arrRow := range rs.Dataset {
-					rows = append(rows, arrRow)
-				}
-				t.AppendHeader(header)
-				t.AppendRows(rows)
 
-				t.AppendSeparator()
-				t.Render()
-			} else {
-				var errResponse ErrorResponse
-				if err := json.Unmarshal(body, &errResponse); err != nil {
-					log.Fatal(err)
-				}
-				if errResponse.Error != "" {
-					fmt.Println(errResponse.Error)
-				} else if errResponse.Message != "" {
-					fmt.Println(errResponse.Message)
-				} else {
-					fmt.Println(respString)
-				}
-			}
 			el.SetLeftPrompt("qdb> ")
 			buff = ""
 		} else {
@@ -162,26 +113,59 @@ func RunSqlShell() {
 	}
 }
 
-func Reverse(input string) (result string) {
-	for _, c := range input {
-		result = string(c) + result
+func runAndPrintQuery(query string) {
+	httpClient := http.Client{
+		Timeout: time.Second * 1000,
 	}
-	return result
-}
-
-func Inspect(input string, digits bool) (count int, kind string) {
-	if !digits {
-		return len(input), "char"
+	qurl := QdbServerPrefix + url.QueryEscape(query)
+	req, err := http.NewRequest(http.MethodGet, qurl, nil)
+	if err != nil {
+		log.Fatal(err)
 	}
-	return inspectNumbers(input), "digit"
-}
+	res, getErr := httpClient.Do(req)
+	if getErr != nil {
+		log.Fatal(getErr)
+	}
+	if res.Body != nil {
+		defer res.Body.Close()
+	}
+	body, err := ioutil.ReadAll(res.Body)
+	if err != nil {
+		log.Fatal(err)
+	}
+	respString := string(body)
+	//fmt.Println(respString)
+	if res.StatusCode == http.StatusOK {
+		var rs ResultSet
+		if err := json.Unmarshal(body, &rs); err != nil {
+			log.Fatal(err)
+		}
+		t := table.NewWriter()
+		t.SetOutputMirror(os.Stdout)
+		header := table.Row{}
+		for _, arrColumn := range rs.Column {
+			header = append(header, arrColumn.Name)
+		}
+		rows := make([]table.Row, 0)
+		for _, arrRow := range rs.Dataset {
+			rows = append(rows, arrRow)
+		}
+		t.AppendHeader(header)
+		t.AppendRows(rows)
 
-func inspectNumbers(input string) (count int) {
-	for _, c := range input {
-		_, err := strconv.Atoi(string(c))
-		if err == nil {
-			count++
+		t.AppendSeparator()
+		t.Render()
+	} else {
+		var errResponse ErrorResponse
+		if err := json.Unmarshal(body, &errResponse); err != nil {
+			log.Fatal(err)
+		}
+		if errResponse.Error != "" {
+			fmt.Println(errResponse.Error)
+		} else if errResponse.Message != "" {
+			fmt.Println(errResponse.Message)
+		} else {
+			fmt.Println(respString)
 		}
 	}
-	return count
 }
