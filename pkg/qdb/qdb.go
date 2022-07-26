@@ -118,11 +118,12 @@ func selectBaseUrl() (string, error) {
 	}
 }
 
-func RunSqlShell(query string) error {
+func RunSqlShell(query string, profile string) error {
 	serverPrefix, err := selectBaseUrl()
 	if err != nil {
 		return err
 	}
+	AddProfile(serverPrefix, serverPrefix)
 
 	if query != "" {
 		return runAndPrintQuery(serverPrefix, query)

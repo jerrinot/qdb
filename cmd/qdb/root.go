@@ -2,9 +2,9 @@ package qdb
 
 import (
 	"fmt"
-	"os"
-
 	"github.com/spf13/cobra"
+	"os"
+	"qdb/pkg/qdb"
 )
 
 var version = "0.0.1"
@@ -15,6 +15,12 @@ var rootCmd = &cobra.Command{
 	Version: version,
 	Long: `qdb is a super fancy CLI for QuestDB
 One can use qdb to modify or inspect QuestDB straight from the terminal`,
+	PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
+		return qdb.LoadConfig(cmd)
+	},
+	PersistentPostRunE: func(cmd *cobra.Command, args []string) error {
+		return qdb.SaveConfig()
+	},
 }
 
 func Execute() {

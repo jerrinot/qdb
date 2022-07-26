@@ -1,0 +1,6 @@
+default-profile: bar
+profiles:
+    - name: http://localhost:9000/exec?count=true&query=
+      url: http://localhost:9000/exec?count=true&query=
+    - name: https://demo.questdb.io/exec?count=true&query=
+      url: https://demo.questdb.io/exec?count=true&query=
