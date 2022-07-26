@@ -97,12 +97,10 @@ func RunSqlShell(query string) {
 			log.Fatal(err)
 		}
 		if strings.HasSuffix(s, ";\n") {
-			if err := el.AddHistory(s); err != nil {
-				log.Fatal(err)
-			}
 			if err := el.AddHistory(buff); err != nil {
 				log.Fatal(err)
 			}
+			runAndPrintQuery(buff)
 			//fmt.Println(buff)
 
 			el.SetLeftPrompt("qdb> ")
