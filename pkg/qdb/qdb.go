@@ -118,32 +118,27 @@ func selectBaseUrl() (string, error) {
 	}
 }
 
-func RunSqlShell(query string) {
+func RunSqlShell(query string) error {
 	serverPrefix, err := selectBaseUrl()
 	if err != nil {
-		panic(err)
-		return
+		return err
 	}
 
 	if query != "" {
-		err := runAndPrintQuery(serverPrefix, query)
-		if err != nil {
-			fmt.Println(err)
-		}
-		return
+		return runAndPrintQuery(serverPrefix, query)
 	}
 
 	// Open and immediately close a libedit instance to test that nonzero editor
 	// IDs are tracked correctly.
 	el, err := libedit.Init("example", true)
 	if err != nil {
-		log.Fatal(err)
+		return err
 	}
 	el.Close()
 
 	el, err = libedit.Init("example", true)
 	if err != nil {
-		log.Fatal(err)
+		return err
 	}
 	defer el.Close()
 
@@ -172,22 +167,22 @@ func RunSqlShell(query string) {
 			}
 			log.Fatal(err)
 		}
+		// todo: deal with escaping and whitespaces after ;
 		if strings.HasSuffix(s, ";\n") {
 			if err := el.AddHistory(buff); err != nil {
-				log.Fatal(err)
+				return err
 			}
 			err := runAndPrintQuery(serverPrefix, buff)
 			if err != nil {
-				fmt.Println(err)
+				fmt.Printf("Error while running query %e\n", err)
 			}
-			//fmt.Println(buff)
-
 			el.SetLeftPrompt("qdb> ")
 			buff = ""
 		} else {
 			el.SetLeftPrompt(" > ")
 		}
 	}
+	return nil
 }
 
 func callGet(url string) (*http.Response, error) {
@@ -209,14 +204,14 @@ func runAndPrintQuery(prefix string, query string) error {
 	}
 	body, err := ioutil.ReadAll(res.Body)
 	if err != nil {
-		log.Fatal(err)
+		return err
 	}
 	respString := string(body)
 	//fmt.Println(respString)
 	if res.StatusCode == http.StatusOK {
 		var rs ResultSet
 		if err := json.Unmarshal(body, &rs); err != nil {
-			fmt.Println(respString)
+			fmt.Println("error while unmarshalling JSON: " + respString)
 		}
 		t := table.NewWriter()
 		t.SetOutputMirror(os.Stdout)
@@ -236,14 +231,14 @@ func runAndPrintQuery(prefix string, query string) error {
 	} else {
 		var errResponse ErrorResponse
 		if err := json.Unmarshal(body, &errResponse); err != nil {
-			log.Fatal(err)
+			fmt.Println("error while unmarshalling JSON: " + respString)
 		}
 		if errResponse.Error != "" {
 			fmt.Println(errResponse.Error)
 		} else if errResponse.Message != "" {
 			fmt.Println(errResponse.Message)
 		} else {
-			fmt.Println(respString)
+			fmt.Println("Unexpected error JSON: " + respString)
 		}
 	}
 	return nil

@@ -15,9 +15,6 @@ var rootCmd = &cobra.Command{
 	Version: version,
 	Long: `qdb is a super fancy CLI for QuestDB
 One can use qdb to modify or inspect QuestDB straight from the terminal`,
-	//Run: func(cmd *cobra.Command, args []string) {
-	//
-	//},
 }
 
 func Execute() {

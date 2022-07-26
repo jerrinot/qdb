@@ -13,8 +13,8 @@ var sqlCmd = &cobra.Command{
 	Aliases: []string{"shell"},
 	Short:   "Run SQL shell",
 	Args:    cobra.ExactArgs(0),
-	Run: func(cmd *cobra.Command, args []string) {
-		qdb.RunSqlShell(Query)
+	RunE: func(cmd *cobra.Command, args []string) error {
+		return qdb.RunSqlShell(Query)
 	},
 }
 
