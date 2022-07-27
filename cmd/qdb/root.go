@@ -1,9 +1,7 @@
 package qdb
 
 import (
-	"fmt"
 	"github.com/spf13/cobra"
-	"os"
 	"qdb/pkg/qdb"
 )
 
@@ -23,9 +21,6 @@ One can use qdb to modify or inspect QuestDB straight from the terminal`,
 	},
 }
 
-func Execute() {
-	if err := rootCmd.Execute(); err != nil {
-		_, _ = fmt.Fprintf(os.Stderr, "Whoops. There was an error while executing your CLI '%s'", err)
-		os.Exit(1)
-	}
+func Execute() error {
+	return rootCmd.Execute()
 }
