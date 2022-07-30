@@ -13,6 +13,7 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"qdb/pkg/qdb/config"
 	"strings"
 	"time"
 )
@@ -60,12 +61,12 @@ func (_ example) GetCompletions(word string) []string {
 
 func resolveConnectionName(connectionName string) (string, error) {
 	if connectionName == "" {
-		connectionName = DefaultConnectionName
-	} else if !ConnectionExists(connectionName) {
+		connectionName = config.DefaultConnectionName
+	} else if !config.ConnectionExists(connectionName) {
 		return "", errors.New("connection name '" + connectionName + "' does not exist")
 	}
 	if connectionName == "" {
-		if len(ConnectionDefs) == 0 {
+		if len(config.ConnectionDefs) == 0 {
 			fmt.Println("No connection to QuestDB server found")
 			prompt := promptui.Prompt{
 				Label:     "Add a new connection",
@@ -82,11 +83,11 @@ func resolveConnectionName(connectionName string) (string, error) {
 			}
 		}
 
-		if len(ConnectionDefs) == 1 {
-			fmt.Println("Choosing the only existing connection: " + ConnectionDefs[0].Name)
-			connectionName = ConnectionDefs[0].Name
+		if len(config.ConnectionDefs) == 1 {
+			fmt.Println("Choosing the only existing connection: " + config.ConnectionDefs[0].Name)
+			connectionName = config.ConnectionDefs[0].Name
 		} else {
-			c, err := ChooseConnection()
+			c, err := ChooseConnection(true)
 			if err != nil {
 				return "", err
 			}
@@ -103,7 +104,7 @@ func addQueryPath(baseUrl string) string {
 	return baseUrl + "exec?count=true&query="
 }
 
-func toServerPrompt(conn ConnectionDef) string {
+func toServerPrompt(conn config.ConnectionDef) string {
 	return conn.Name + "> "
 }
 
@@ -112,7 +113,7 @@ func RunSqlShell(query string, connectionName string) error {
 	if err != nil {
 		return err
 	}
-	connection, err := ConnectionByName(connectionName)
+	connection, err := config.ConnectionByName(connectionName)
 	if err != nil {
 		return err
 	}

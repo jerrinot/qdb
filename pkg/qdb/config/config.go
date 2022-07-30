@@ -1,4 +1,4 @@
-package qdb
+package config
 
 import (
 	"errors"
@@ -19,29 +19,15 @@ type ConnectionDef struct {
 
 func LoadConfig() error {
 	viper.SetConfigName(defaultConfigFilename)
-
 	viper.AddConfigPath("$HOME/.qdbctl")
-
-	// Attempt to read the config file, gracefully ignoring errors
-	// caused by a config file not being found. Return an error
-	// if we cannot parse the config file.
 	if err := viper.ReadInConfig(); err != nil {
-		// It's okay if there isn't a config file
 		if _, ok := err.(viper.ConfigFileNotFoundError); !ok {
 			return err
 		}
 	}
 
-	// When we bind flags to environment variables expect that the
-	// environment variables are prefixed, e.g. a flag like --number
-	// binds to an environment variable STING_NUMBER. This helps
-	// avoid conflicts.
 	viper.SetEnvPrefix(envPrefix)
 	viper.SetConfigType("yaml")
-
-	// Bind to environment variables
-	// Works great for simple config names, but needs help for names
-	// like --favorite-color which we fix in the bindFlags function
 	viper.AutomaticEnv()
 	DefaultConnectionName = viper.GetString("default-connection")
 	if err := viper.UnmarshalKey("connections", &ConnectionDefs); err != nil {
@@ -91,7 +77,7 @@ func AddConnection(name string, url string) error {
 }
 
 func DeleteConnection(connName string) error {
-	newConnection := make([]ConnectionDef, len(ConnectionDefs))
+	newConnection := make([]ConnectionDef, 0)
 	found := false
 	for _, p := range ConnectionDefs {
 		if p.Name == connName {

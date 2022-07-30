@@ -5,6 +5,7 @@ import (
 	"github.com/jedib0t/go-pretty/v6/table"
 	"github.com/manifoldco/promptui"
 	"os"
+	"qdb/pkg/qdb/config"
 	"strings"
 )
 
@@ -13,7 +14,7 @@ func ManageConnections() error {
 		selectPrompt := promptui.Select{
 			Label: "What do you want to do?",
 		}
-		if len(ConnectionDefs) == 0 {
+		if len(config.ConnectionDefs) == 0 {
 			fmt.Println("No connection exists")
 			selectPrompt.Items = []string{"Add a new connection", "Exit"}
 		} else {
@@ -35,7 +36,9 @@ func ManageConnections() error {
 		} else if result == "Edit a connection" {
 			panic("edit not implemented")
 		} else if result == "Delete a connection" {
-			panic("delete not implemented")
+			if err := DeleteConnection(); err != nil {
+				return nil
+			}
 		} else if result == "Exit" {
 			return nil
 		}
@@ -60,12 +63,12 @@ func CreateNewConnection() error {
 	if !strings.HasPrefix(url, "http://") && !strings.HasPrefix(url, "https://") {
 		url = "http://" + url
 	}
-	return AddConnection(name, url)
+	return config.AddConnection(name, url)
 }
 
-func ChooseConnection() (ConnectionDef, error) {
-	conns := make([]string, len(ConnectionDefs))
-	for i, p := range ConnectionDefs {
+func ChooseConnection(canSetAsDefault bool) (config.ConnectionDef, error) {
+	conns := make([]string, len(config.ConnectionDefs))
+	for i, p := range config.ConnectionDefs {
 		conns[i] = p.Name
 	}
 	selectPrompt := promptui.Select{
@@ -74,10 +77,10 @@ func ChooseConnection() (ConnectionDef, error) {
 	}
 	i, _, err := selectPrompt.Run()
 	if err != nil {
-		return ConnectionDef{}, err
+		return config.ConnectionDef{}, err
 	}
 
-	if DefaultConnectionName == "" {
+	if canSetAsDefault && config.DefaultConnectionName == "" {
 		prompt := promptui.Prompt{
 			Label:     "Do you want to set this connection as default",
 			IsConfirm: true,
@@ -85,11 +88,20 @@ func ChooseConnection() (ConnectionDef, error) {
 
 		_, err = prompt.Run()
 		if err != nil {
-			return ConnectionDef{}, err
+			return config.ConnectionDef{}, err
 		}
-		SetAsDefaultConnection(ConnectionDefs[i].Name)
+		config.SetAsDefaultConnection(config.ConnectionDefs[i].Name)
 	}
-	return ConnectionDefs[i], err
+	return config.ConnectionDefs[i], err
+}
+
+func DeleteConnection() error {
+	fmt.Println("Choose a connection to delete")
+	connection, err := ChooseConnection(false)
+	if err != nil {
+		return err
+	}
+	return config.DeleteConnection(connection.Name)
 }
 
 func ListConnections() error {
@@ -97,8 +109,8 @@ func ListConnections() error {
 	t.SetOutputMirror(os.Stdout)
 	header := table.Row{"Name", "URL", "Default"}
 	rows := make([]table.Row, 0)
-	for _, p := range ConnectionDefs {
-		rows = append(rows, table.Row{p.Name, p.Url, IsDefaultConnection(p.Name)})
+	for _, p := range config.ConnectionDefs {
+		rows = append(rows, table.Row{p.Name, p.Url, config.IsDefaultConnection(p.Name)})
 	}
 	t.AppendHeader(header)
 	t.AppendRows(rows)

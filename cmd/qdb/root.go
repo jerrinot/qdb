@@ -4,7 +4,7 @@ import (
 	"github.com/spf13/cobra"
 	"qdb/cmd/qdb/connections"
 	"qdb/cmd/qdb/sql"
-	"qdb/pkg/qdb"
+	"qdb/pkg/qdb/config"
 )
 
 var version = "0.0.1"
@@ -16,7 +16,7 @@ var rootCmd = &cobra.Command{
 	Long: `qdb is a super fancy CLI for QuestDB
 One can use qdb to modify or inspect QuestDB straight from the terminal`,
 	PersistentPostRunE: func(cmd *cobra.Command, args []string) error {
-		return qdb.SaveConfig()
+		return config.SaveConfig()
 	},
 }
 
@@ -25,7 +25,7 @@ func Execute() error {
 }
 
 func init() {
-	_ = qdb.LoadConfig()
+	_ = config.LoadConfig()
 	rootCmd.AddCommand(sql.SqlCmd)
 	rootCmd.AddCommand(connections.ConnectionsCmd)
 }

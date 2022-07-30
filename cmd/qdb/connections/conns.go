@@ -3,6 +3,7 @@ package connections
 import (
 	"github.com/spf13/cobra"
 	"qdb/pkg/qdb"
+	"qdb/pkg/qdb/config"
 )
 
 var connectionName string
@@ -32,7 +33,7 @@ var addConnectionCmd = &cobra.Command{
 	Short: "Add Connection",
 	Args:  cobra.ExactArgs(0),
 	RunE: func(cmd *cobra.Command, args []string) error {
-		return qdb.AddConnection(connectionName, connectionUrl)
+		return config.AddConnection(connectionName, connectionUrl)
 	},
 	Example: "qdb connections add --name localhost --url http://localhost:9000",
 }
@@ -42,7 +43,7 @@ var deleteConnectionCmd = &cobra.Command{
 	Short: "Delete Connection",
 	Args:  cobra.ExactArgs(0),
 	RunE: func(cmd *cobra.Command, args []string) error {
-		return qdb.DeleteConnection(connectionName)
+		return config.DeleteConnection(connectionName)
 	},
 }
 
