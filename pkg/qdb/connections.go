@@ -1,9 +1,11 @@
 package qdb
 
 import (
+	"errors"
 	"fmt"
 	"github.com/jedib0t/go-pretty/v6/table"
 	"github.com/manifoldco/promptui"
+	"net/url"
 	"os"
 	"qdb/pkg/qdb/config"
 	"strings"
@@ -45,6 +47,20 @@ func ManageConnections() error {
 	}
 }
 
+func testConnection(serverUrl string) error {
+	res, err := callGet(AddQueryPath(serverUrl) + url.QueryEscape("select now();"))
+	if err != nil {
+		return err
+	}
+	if res.Body != nil {
+		defer res.Body.Close()
+	}
+	if res.StatusCode == 200 {
+		return nil
+	}
+	return errors.New(res.Status)
+}
+
 func CreateNewConnection() error {
 	namePrompt := promptui.Prompt{
 		Label: "Connection Name",
@@ -62,6 +78,30 @@ func CreateNewConnection() error {
 	}
 	if !strings.HasPrefix(url, "http://") && !strings.HasPrefix(url, "https://") {
 		url = "http://" + url
+	}
+
+	if err := testConnection(url); err != nil {
+		fmt.Printf("Cannot connect to the server %s\n", err)
+		prompt := promptui.Prompt{
+			Label:     "Do you really want to add it",
+			IsConfirm: true,
+		}
+
+		_, err = prompt.Run()
+		errOrig := err
+		if err == nil {
+			return config.AddConnection(name, url)
+		}
+
+		prompt = promptui.Prompt{
+			Label:     "Do want to add a different connection",
+			IsConfirm: true,
+		}
+		_, err = prompt.Run()
+		if err != nil {
+			return errOrig
+		}
+		return CreateNewConnection()
 	}
 	return config.AddConnection(name, url)
 }

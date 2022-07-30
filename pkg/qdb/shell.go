@@ -97,7 +97,7 @@ func resolveConnectionName(connectionName string) (string, error) {
 	return connectionName, nil
 }
 
-func addQueryPath(baseUrl string) string {
+func AddQueryPath(baseUrl string) string {
 	if !strings.HasSuffix(baseUrl, "/") {
 		baseUrl = baseUrl + "/"
 	}
@@ -117,10 +117,9 @@ func RunSqlShell(query string, connectionName string) error {
 	if err != nil {
 		return err
 	}
-	serverPrefix := addQueryPath(connection.Url)
 
 	if query != "" {
-		return runAndPrintQuery(serverPrefix, query)
+		return runAndPrintQuery(connection.Url, query)
 	}
 
 	// Open and immediately close a libedit instance to test that nonzero editor
@@ -167,7 +166,7 @@ func RunSqlShell(query string, connectionName string) error {
 			if err := el.AddHistory(buff); err != nil {
 				return err
 			}
-			err := runAndPrintQuery(serverPrefix, buff)
+			err := runAndPrintQuery(connection.Url, buff)
 			if err != nil {
 				fmt.Printf("Error while running query %e\n", err)
 			}
@@ -188,8 +187,8 @@ func callGet(url string) (*http.Response, error) {
 	return httpClient.Do(req)
 }
 
-func runAndPrintQuery(prefix string, query string) error {
-	qurl := prefix + url.QueryEscape(query)
+func runAndPrintQuery(serverUrl string, query string) error {
+	qurl := AddQueryPath(serverUrl) + url.QueryEscape(query)
 	res, err := callGet(qurl)
 	if err != nil {
 		return err
