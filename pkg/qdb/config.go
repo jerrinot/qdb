@@ -5,14 +5,14 @@ import (
 	"github.com/spf13/viper"
 )
 
-var DefaultProfile string
-var Profiles []ProfileDef
+var DefaultConnectionName string
+var ConnectionDefs []ConnectionDef
 
 const defaultConfigFilename = "config"
 const envPrefix = "qdb"
 const qdbdirname = ".qdbctl"
 
-type ProfileDef struct {
+type ConnectionDef struct {
 	Name string
 	Url  string
 }
@@ -43,21 +43,24 @@ func LoadConfig() error {
 	// Works great for simple config names, but needs help for names
 	// like --favorite-color which we fix in the bindFlags function
 	viper.AutomaticEnv()
-	DefaultProfile = viper.GetString("default-profile")
-	if err := viper.UnmarshalKey("profiles", &Profiles); err != nil {
+	DefaultConnectionName = viper.GetString("default-connection")
+	if err := viper.UnmarshalKey("connections", &ConnectionDefs); err != nil {
 		return err
 	}
 	return nil
 }
 
-func SaveDefaultProfile(defaultProfileName string) error {
-	viper.Set("default-profile", defaultProfileName)
-	DefaultProfile = defaultProfileName
-	return viper.WriteConfig()
+func ConnectionByName(connectionName string) (ConnectionDef, error) {
+	for _, c := range ConnectionDefs {
+		if connectionName == c.Name {
+			return c, nil
+		}
+	}
+	return ConnectionDef{}, errors.New("connection '" + connectionName + "' does not exist")
 }
 
-func ProfileExists(name string) bool {
-	for _, p := range Profiles {
+func ConnectionExists(name string) bool {
+	for _, p := range ConnectionDefs {
 		if p.Name == name {
 			return true
 		}
@@ -65,41 +68,41 @@ func ProfileExists(name string) bool {
 	return false
 }
 
-func IsDefaultProfile(name string) bool {
-	return DefaultProfile == name
+func IsDefaultConnection(name string) bool {
+	return DefaultConnectionName == name
 }
 
-func AddProfile(name string, url string) error {
-	if ProfileExists(name) {
-		return errors.New("profile '" + name + "' already exists")
+func AddConnection(name string, url string) error {
+	if ConnectionExists(name) {
+		return errors.New("connection '" + name + "' already exists")
 	}
-	profile := ProfileDef{Name: name, Url: url}
-	Profiles = append(Profiles, profile)
-	viper.Set("profiles", Profiles)
-	if len(Profiles) == 1 {
-		DefaultProfile = name
+	connection := ConnectionDef{Name: name, Url: url}
+	ConnectionDefs = append(ConnectionDefs, connection)
+	viper.Set("connections", ConnectionDefs)
+	if len(ConnectionDefs) == 1 {
+		DefaultConnectionName = name
 	}
 	return nil
 }
 
-func DeleteProfile(name string) error {
-	newProfiles := make([]ProfileDef, len(Profiles))
+func DeleteConnection(connName string) error {
+	newConnection := make([]ConnectionDef, len(ConnectionDefs))
 	found := false
-	for _, p := range Profiles {
-		if p.Name == name {
+	for _, p := range ConnectionDefs {
+		if p.Name == connName {
 			found = true
 		} else {
-			newProfiles = append(newProfiles, p)
+			newConnection = append(newConnection, p)
 		}
 	}
 	if !found {
-		return errors.New("profile '" + name + "' does not exist")
+		return errors.New("connection '" + connName + "' does not exist")
 	}
 
-	Profiles = newProfiles
-	viper.Set("profiles", Profiles)
-	if name == DefaultProfile {
-		DefaultProfile = ""
+	ConnectionDefs = newConnection
+	viper.Set("connections", ConnectionDefs)
+	if connName == DefaultConnectionName {
+		DefaultConnectionName = ""
 	}
 	return nil
 }

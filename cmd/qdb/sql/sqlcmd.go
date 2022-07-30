@@ -6,7 +6,7 @@ import (
 )
 
 var Query string
-var Profile string
+var ConnectionName string
 
 var SqlCmd = &cobra.Command{
 	Use:     "sql",
@@ -14,11 +14,11 @@ var SqlCmd = &cobra.Command{
 	Short:   "Run SQL shell",
 	Args:    cobra.ExactArgs(0),
 	RunE: func(cmd *cobra.Command, args []string) error {
-		return qdb.RunSqlShell(Query, Profile)
+		return qdb.RunSqlShell(Query, ConnectionName)
 	},
 }
 
 func init() {
 	SqlCmd.Flags().StringVarP(&Query, "query", "q", "", "Query to run in non-interactive mode")
-	SqlCmd.Flags().StringVarP(&Profile, "profile", "p", "", "QuestDB profile selection")
+	SqlCmd.Flags().StringVarP(&ConnectionName, "connection", "c", "", "QuestDB connection selection")
 }

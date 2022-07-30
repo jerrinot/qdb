@@ -50,13 +50,26 @@ func ManageConnections() error {
 	}
 }
 
+func ChooseConnection() (ConnectionDef, error) {
+	conns := make([]string, len(ConnectionDefs))
+	for i, p := range ConnectionDefs {
+		conns[i] = p.Name
+	}
+	selectPrompt := promptui.Select{
+		Label: "Select Connection",
+		Items: conns,
+	}
+	i, _, err := selectPrompt.Run()
+	return ConnectionDefs[i], err
+}
+
 func ListConnections() error {
 	t := table.NewWriter()
 	t.SetOutputMirror(os.Stdout)
 	header := table.Row{"Name", "URL", "Default"}
 	rows := make([]table.Row, 0)
-	for _, p := range Profiles {
-		rows = append(rows, table.Row{p.Name, p.Url, IsDefaultProfile(p.Name)})
+	for _, p := range ConnectionDefs {
+		rows = append(rows, table.Row{p.Name, p.Url, IsDefaultConnection(p.Name)})
 	}
 	t.AppendHeader(header)
 	t.AppendRows(rows)
@@ -64,12 +77,4 @@ func ListConnections() error {
 	t.AppendSeparator()
 	t.Render()
 	return nil
-}
-
-func AddConnection(name string, url string) error {
-	return AddProfile(name, url)
-}
-
-func DeleteConnection(name string) error {
-	return DeleteProfile(name)
 }

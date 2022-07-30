@@ -118,12 +118,47 @@ func selectBaseUrl() (string, error) {
 	}
 }
 
-func RunSqlShell(query string, profile string) error {
-	serverPrefix, err := selectBaseUrl()
+func resolveConnectionName(connectionName string) (string, error) {
+	if connectionName == "" {
+		connectionName = DefaultConnectionName
+	} else if !ConnectionExists(connectionName) {
+		return "", errors.New("connection name '" + connectionName + "' does not exist")
+	}
+	if connectionName == "" {
+		if len(ConnectionDefs) == 0 {
+			// todo: offer to define a connection?
+			return "", errors.New("no connection exists")
+		}
+		c, err := ChooseConnection()
+		if err != nil {
+			return "", err
+		}
+		connectionName = c.Name
+	}
+	return connectionName, nil
+}
+
+func addQueryPath(baseUrl string) string {
+	if !strings.HasSuffix(baseUrl, "/") {
+		baseUrl = baseUrl + "/"
+	}
+	return baseUrl + "exec?count=true&query="
+}
+
+func toServerPrompt(conn ConnectionDef) string {
+	return conn.Name + "> "
+}
+
+func RunSqlShell(query string, connectionName string) error {
+	connectionName, err := resolveConnectionName(connectionName)
 	if err != nil {
 		return err
 	}
-	AddProfile(serverPrefix, serverPrefix)
+	connection, err := ConnectionByName(connectionName)
+	if err != nil {
+		return err
+	}
+	serverPrefix := addQueryPath(connection.Url)
 
 	if query != "" {
 		return runAndPrintQuery(serverPrefix, query)
@@ -152,7 +187,7 @@ func RunSqlShell(query string, profile string) error {
 	el.LoadHistory("hist")
 	el.SetAutoSaveHistory("hist", true)
 	el.SetCompleter(example{})
-	el.SetLeftPrompt("qdb> ")
+	el.SetLeftPrompt(toServerPrompt(connection))
 	//el.SetRightPrompt("(-:")
 	buff := ""
 	for {
@@ -177,7 +212,7 @@ func RunSqlShell(query string, profile string) error {
 			if err != nil {
 				fmt.Printf("Error while running query %e\n", err)
 			}
-			el.SetLeftPrompt("qdb> ")
+			el.SetLeftPrompt(toServerPrompt(connection))
 			buff = ""
 		} else {
 			el.SetLeftPrompt(" > ")
