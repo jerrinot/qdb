@@ -58,66 +58,6 @@ func (_ example) GetCompletions(word string) []string {
 	return nil
 }
 
-func amendUrl(input string) string {
-	if !strings.HasPrefix(input, "http://") && !strings.HasPrefix(input, "https://") {
-		input = "http://" + input
-	}
-	return input + "/exec?count=true&query="
-}
-
-func selectBaseUrl() (string, error) {
-	selectPrompt := promptui.Select{
-		Label: "Select QuestDB connection type",
-		Items: []string{"Localhost", "QuestDB Cloud", "Custom"},
-	}
-
-	_, result, err := selectPrompt.Run()
-
-	if err != nil {
-		fmt.Printf("Cannot select QuestDB connection type %v\n", err)
-		return "", err
-	}
-
-	fmt.Printf("You choose %q\n", result)
-	if result == "Localhost" {
-		return localhostPrefix, nil
-	} else if result == "QuestDB Cloud" {
-		return "", fmt.Errorf("QuestDB Cloud is not support yet")
-	} else if result == "Custom" {
-		validate := func(input string) error {
-			input = amendUrl(input)
-			url := input + url.QueryEscape("select now();")
-			resp, err := callGet(url)
-			if err != nil {
-				return errors.New("error while calling GET")
-			}
-			if resp.Body != nil {
-				defer resp.Body.Close()
-			}
-			if resp.StatusCode != 200 {
-				return fmt.Errorf(url + "Returned unexpected return code")
-			}
-			return nil
-		}
-
-		prompt := promptui.Prompt{
-			Label:    "QuestDB HTTP Endpoint",
-			Validate: validate,
-		}
-		serverPrefix, err := prompt.Run()
-
-		if err != nil {
-			fmt.Printf("Prompt failed %v\n", err)
-			return "", err
-		}
-		serverPrefix = amendUrl(serverPrefix)
-		fmt.Printf("You choose %q\n", serverPrefix)
-		return serverPrefix, nil
-	} else {
-		return "", fmt.Errorf("unexpected QuestDB connection type %s", result)
-	}
-}
-
 func resolveConnectionName(connectionName string) (string, error) {
 	if connectionName == "" {
 		connectionName = DefaultConnectionName
@@ -126,14 +66,33 @@ func resolveConnectionName(connectionName string) (string, error) {
 	}
 	if connectionName == "" {
 		if len(ConnectionDefs) == 0 {
-			// todo: offer to define a connection?
-			return "", errors.New("no connection exists")
+			fmt.Println("No connection to QuestDB server found")
+			prompt := promptui.Prompt{
+				Label:     "Add a new connection?",
+				IsConfirm: true,
+			}
+
+			_, err := prompt.Run()
+			if err != nil {
+				return "", errors.New("no connection exists")
+			} else {
+				err := ManageConnections()
+				if err != nil {
+					return "", err
+				}
+			}
 		}
-		c, err := ChooseConnection()
-		if err != nil {
-			return "", err
+
+		if len(ConnectionDefs) == 1 {
+			fmt.Println("Choosing the only existing connection: " + ConnectionDefs[0].Name)
+			connectionName = ConnectionDefs[0].Name
+		} else {
+			c, err := ChooseConnection()
+			if err != nil {
+				return "", err
+			}
+			connectionName = c.Name
 		}
-		connectionName = c.Name
 	}
 	return connectionName, nil
 }
