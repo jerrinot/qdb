@@ -5,6 +5,7 @@ import (
 	"github.com/jedib0t/go-pretty/v6/table"
 	"github.com/manifoldco/promptui"
 	"os"
+	"strings"
 )
 
 func ManageConnections() error {
@@ -56,6 +57,9 @@ func CreateNewConnection() error {
 	if err != nil {
 		return err
 	}
+	if !strings.HasPrefix(url, "http://") && !strings.HasPrefix(url, "https://") {
+		url = "http://" + url
+	}
 	return AddConnection(name, url)
 }
 
@@ -69,6 +73,22 @@ func ChooseConnection() (ConnectionDef, error) {
 		Items: conns,
 	}
 	i, _, err := selectPrompt.Run()
+	if err != nil {
+		return ConnectionDef{}, err
+	}
+
+	if DefaultConnectionName == "" {
+		prompt := promptui.Prompt{
+			Label:     "Do you want to set this connection as default",
+			IsConfirm: true,
+		}
+
+		_, err = prompt.Run()
+		if err != nil {
+			return ConnectionDef{}, err
+		}
+		SetAsDefaultConnection(ConnectionDefs[i].Name)
+	}
 	return ConnectionDefs[i], err
 }
 

@@ -59,6 +59,11 @@ func ConnectionByName(connectionName string) (ConnectionDef, error) {
 	return ConnectionDef{}, errors.New("connection '" + connectionName + "' does not exist")
 }
 
+func SetAsDefaultConnection(connectionName string) {
+	DefaultConnectionName = connectionName
+	viper.Set("default-connection", connectionName)
+}
+
 func ConnectionExists(name string) bool {
 	for _, p := range ConnectionDefs {
 		if p.Name == name {
@@ -80,7 +85,7 @@ func AddConnection(name string, url string) error {
 	ConnectionDefs = append(ConnectionDefs, connection)
 	viper.Set("connections", ConnectionDefs)
 	if len(ConnectionDefs) == 1 {
-		DefaultConnectionName = name
+		SetAsDefaultConnection(name)
 	}
 	return nil
 }
