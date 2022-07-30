@@ -9,45 +9,54 @@ import (
 
 func ManageConnections() error {
 	for {
-		fmt.Println("Current connections: ")
-		if err := ListConnections(); err != nil {
-			return nil
-		}
 		selectPrompt := promptui.Select{
 			Label: "What do you want to do?",
-			Items: []string{"Add a new connection", "Edit a connection", "Delete a connection", "Exit"},
+		}
+		if len(ConnectionDefs) == 0 {
+			fmt.Println("No connection exists")
+			selectPrompt.Items = []string{"Add a new connection", "Exit"}
+		} else {
+			fmt.Println("Current connections: ")
+			selectPrompt.Items = []string{"Add a new connection", "Edit a connection", "Delete a connection", "Exit"}
+			if err := ListConnections(); err != nil {
+				return nil
+			}
 		}
 
-		result, _, err := selectPrompt.Run()
+		_, result, err := selectPrompt.Run()
 		if err != nil {
 			return err
 		}
-		if result == 0 {
-			namePrompt := promptui.Prompt{
-				Label: "Connection Name",
+		if result == "Add a new connection" {
+			if err := CreateNewConnection(); err != nil {
+				return nil
 			}
-			name, err := namePrompt.Run()
-			if err != nil {
-				return err
-			}
-			urlPrompt := promptui.Prompt{
-				Label: "URL",
-			}
-			url, err := urlPrompt.Run()
-			if err != nil {
-				return err
-			}
-			if err := AddConnection(name, url); err != nil {
-				return err
-			}
-		} else if result == 1 {
+		} else if result == "Edit a connection" {
 			panic("edit not implemented")
-		} else if result == 2 {
+		} else if result == "Delete a connection" {
 			panic("delete not implemented")
-		} else if result == 3 {
+		} else if result == "Exit" {
 			return nil
 		}
 	}
+}
+
+func CreateNewConnection() error {
+	namePrompt := promptui.Prompt{
+		Label: "Connection Name",
+	}
+	name, err := namePrompt.Run()
+	if err != nil {
+		return err
+	}
+	urlPrompt := promptui.Prompt{
+		Label: "URL",
+	}
+	url, err := urlPrompt.Run()
+	if err != nil {
+		return err
+	}
+	return AddConnection(name, url)
 }
 
 func ChooseConnection() (ConnectionDef, error) {

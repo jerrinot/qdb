@@ -68,7 +68,7 @@ func resolveConnectionName(connectionName string) (string, error) {
 		if len(ConnectionDefs) == 0 {
 			fmt.Println("No connection to QuestDB server found")
 			prompt := promptui.Prompt{
-				Label:     "Add a new connection?",
+				Label:     "Add a new connection",
 				IsConfirm: true,
 			}
 
@@ -76,8 +76,7 @@ func resolveConnectionName(connectionName string) (string, error) {
 			if err != nil {
 				return "", errors.New("no connection exists")
 			} else {
-				err := ManageConnections()
-				if err != nil {
+				if err := CreateNewConnection(); err != nil {
 					return "", err
 				}
 			}
