@@ -11,6 +11,7 @@ import (
 	"io/ioutil"
 	"log"
 	"net/http"
+	"net/http/cookiejar"
 	"net/url"
 	"os"
 	"qdb/pkg/qdb/config"
@@ -40,8 +41,11 @@ type Column struct {
 	ColumnType string `json:"type"`
 }
 
+var jar, err = cookiejar.New(nil)
+
 var httpClient = http.Client{
 	Timeout: time.Second * 1000,
+	Jar:     jar,
 }
 
 type example struct{}
@@ -177,14 +181,6 @@ func RunSqlShell(query string, connectionName string) error {
 		}
 	}
 	return nil
-}
-
-func callGet(url string) (*http.Response, error) {
-	req, err := http.NewRequest(http.MethodGet, url, nil)
-	if err != nil {
-		return nil, err
-	}
-	return httpClient.Do(req)
 }
 
 func runAndPrintQuery(serverUrl string, query string) error {
