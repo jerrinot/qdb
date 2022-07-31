@@ -13,8 +13,11 @@ const envPrefix = "qdb"
 const qdbdirname = ".qdbctl"
 
 type ConnectionDef struct {
-	Name string
-	Url  string
+	Name     string `json:"name"`
+	Url      string `json:"url"`
+	Username string `json:"user"`
+	Password string `json:"password"`
+	IsCloud  bool   `json:"cloud"`
 }
 
 func LoadConfig() error {
@@ -63,15 +66,14 @@ func IsDefaultConnection(name string) bool {
 	return DefaultConnectionName == name
 }
 
-func AddConnection(name string, url string) error {
-	if ConnectionExists(name) {
-		return errors.New("connection '" + name + "' already exists")
+func AddConnection(conn ConnectionDef) error {
+	if ConnectionExists(conn.Name) {
+		return errors.New("connection '" + conn.Name + "' already exists")
 	}
-	connection := ConnectionDef{Name: name, Url: url}
-	ConnectionDefs = append(ConnectionDefs, connection)
+	ConnectionDefs = append(ConnectionDefs, conn)
 	viper.Set("connections", ConnectionDefs)
 	if len(ConnectionDefs) == 1 {
-		SetAsDefaultConnection(name)
+		SetAsDefaultConnection(conn.Name)
 	}
 	return nil
 }

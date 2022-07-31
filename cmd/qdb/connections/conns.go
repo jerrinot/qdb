@@ -33,7 +33,10 @@ var addConnectionCmd = &cobra.Command{
 	Short: "Add Connection",
 	Args:  cobra.ExactArgs(0),
 	RunE: func(cmd *cobra.Command, args []string) error {
-		return config.AddConnection(connectionName, connectionUrl)
+		return config.AddConnection(config.ConnectionDef{
+			Name: connectionName,
+			Url:  connectionUrl,
+		})
 	},
 	Example: "qdb connections add --name localhost --url http://localhost:9000",
 }

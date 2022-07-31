@@ -123,7 +123,7 @@ func RunSqlShell(query string, connectionName string) error {
 	}
 
 	if query != "" {
-		return runAndPrintQuery(connection.Url, query)
+		return runAndPrintQuery(connection, query)
 	}
 
 	// Open and immediately close a libedit instance to test that nonzero editor
@@ -170,7 +170,7 @@ func RunSqlShell(query string, connectionName string) error {
 			if err := el.AddHistory(buff); err != nil {
 				return err
 			}
-			err := runAndPrintQuery(connection.Url, buff)
+			err := runAndPrintQuery(connection, buff)
 			if err != nil {
 				fmt.Printf("Error while running query %e\n", err)
 			}
@@ -183,9 +183,9 @@ func RunSqlShell(query string, connectionName string) error {
 	return nil
 }
 
-func runAndPrintQuery(serverUrl string, query string) error {
-	qurl := AddQueryPath(serverUrl) + url.QueryEscape(query)
-	res, err := callGet(qurl)
+func runAndPrintQuery(conn config.ConnectionDef, query string) error {
+	qurl := AddQueryPath(conn.Url) + url.QueryEscape(query)
+	res, err := callGetWithAuth(qurl, conn.Username, conn.Password)
 	if err != nil {
 		return err
 	}

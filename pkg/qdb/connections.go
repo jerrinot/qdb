@@ -64,8 +64,8 @@ func ManageConnections() error {
 	}
 }
 
-func testConnection(serverUrl string) error {
-	res, err := callGet(AddQueryPath(serverUrl) + url.QueryEscape("select now();"))
+func testConnection(serverUrl string, username string, password string) error {
+	res, err := callGetWithAuth(AddQueryPath(serverUrl)+url.QueryEscape("select now();"), username, password)
 	if err != nil {
 		return err
 	}
@@ -150,10 +150,67 @@ func CreateNewCloudConnection() error {
 		if err := json.Unmarshal(body, &instances); err != nil {
 			return err
 		}
-		for _, i := range instances {
-			fmt.Println(i)
+		var instance CloudInstance
+		if len(instances) == 0 {
+			fmt.Printf("There is no Cloud QuestDB server in the %s account\n", email)
+			return nil
+		} else if len(instances) > 1 {
+			instanceNames := make([]string, len(instances))
+			for i, _ := range instances {
+				// todo: deal with instances not ready
+				instanceNames[i] = instances[i].Name
+			}
+			selectPrompt := promptui.Select{
+				Label: "Select QuestDB Cloud instance",
+				Items: instanceNames,
+			}
+			i, _, err := selectPrompt.Run()
+			if err != nil {
+				return err
+			}
+			instance = instances[i]
+		} else {
+			instance = instances[0]
+			fmt.Printf("Found QuestDB Cloud instance '%s' \n", instance.Name)
 		}
-		return nil
+		instance.RestEndpoint = "https://" + instance.RestEndpoint
+		instance.RestEndpoint = strings.TrimSuffix(instance.RestEndpoint, "/exec")
+		if err := testConnection(instance.RestEndpoint, instance.HttpBasicUser, instance.HttpBasicPassword); err != nil {
+			fmt.Printf("Cannot connect to the server %s\n", err)
+			prompt := promptui.Prompt{
+				Label:     "Do you really want to add it",
+				IsConfirm: true,
+			}
+
+			_, err = prompt.Run()
+			errOrig := err
+			if err == nil {
+				return config.AddConnection(config.ConnectionDef{
+					Name:     instance.Name,
+					Url:      instance.RestEndpoint,
+					Username: instance.HttpBasicUser,
+					Password: instance.HttpBasicPassword,
+					IsCloud:  true,
+				})
+			}
+
+			prompt = promptui.Prompt{
+				Label:     "Do want to add a different connection",
+				IsConfirm: true,
+			}
+			_, err = prompt.Run()
+			if err != nil {
+				return errOrig
+			}
+			return CreateNewConnection()
+		}
+		return config.AddConnection(config.ConnectionDef{
+			Name:     instance.Name,
+			Url:      instance.RestEndpoint,
+			Username: instance.HttpBasicUser,
+			Password: instance.HttpBasicPassword,
+			IsCloud:  true,
+		})
 	} else if resp.StatusCode == 401 {
 		return errors.New("wrong QuestDB Cloud credentials")
 	} else {
@@ -204,7 +261,7 @@ func CreateNewHttpConnection() error {
 		url = "http://" + url
 	}
 
-	if err := testConnection(url); err != nil {
+	if err := testConnection(url, "", ""); err != nil {
 		fmt.Printf("Cannot connect to the server %s\n", err)
 		prompt := promptui.Prompt{
 			Label:     "Do you really want to add it",
@@ -214,7 +271,10 @@ func CreateNewHttpConnection() error {
 		_, err = prompt.Run()
 		errOrig := err
 		if err == nil {
-			return config.AddConnection(name, url)
+			return config.AddConnection(config.ConnectionDef{
+				Name: name,
+				Url:  url,
+			})
 		}
 
 		prompt = promptui.Prompt{
@@ -225,9 +285,12 @@ func CreateNewHttpConnection() error {
 		if err != nil {
 			return errOrig
 		}
-		return CreateNewHttpConnection()
+		return CreateNewConnection()
 	}
-	return config.AddConnection(name, url)
+	return config.AddConnection(config.ConnectionDef{
+		Name: name,
+		Url:  url,
+	})
 }
 
 func ChooseConnection(canSetAsDefault bool) (config.ConnectionDef, error) {
@@ -271,10 +334,10 @@ func DeleteConnection() error {
 func ListConnections() error {
 	t := table.NewWriter()
 	t.SetOutputMirror(os.Stdout)
-	header := table.Row{"Name", "URL", "Default"}
+	header := table.Row{"Name", "URL", "Default", "Authenticated"}
 	rows := make([]table.Row, 0)
 	for _, p := range config.ConnectionDefs {
-		rows = append(rows, table.Row{p.Name, p.Url, config.IsDefaultConnection(p.Name)})
+		rows = append(rows, table.Row{p.Name, p.Url, config.IsDefaultConnection(p.Name), p.Username != ""})
 	}
 	t.AppendHeader(header)
 	t.AppendRows(rows)

@@ -4,21 +4,19 @@ import (
 	"net/http"
 )
 
-func callGetWithCookies(url string, cookies []*http.Cookie) (*http.Response, error) {
+func callGet(url string) (*http.Response, error) {
 	req, err := http.NewRequest(http.MethodGet, url, nil)
 	if err != nil {
 		return nil, err
 	}
-	for _, c := range cookies {
-		req.AddCookie(c)
-	}
-
 	return httpClient.Do(req)
 }
 
-func callGet(url string) (*http.Response, error) {
-
+func callGetWithAuth(url string, username string, password string) (*http.Response, error) {
 	req, err := http.NewRequest(http.MethodGet, url, nil)
+	if username != "" {
+		req.SetBasicAuth(username, password)
+	}
 	if err != nil {
 		return nil, err
 	}
